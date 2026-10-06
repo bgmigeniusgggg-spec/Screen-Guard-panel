@@ -2,7 +2,6 @@
 // SCREENGUARD PANEL
 // ============================================
 
-// ⭐ STEP 1: YAHAN APNI SUPABASE VALUES DAAL
 const SUPABASE_URL = "https://weyfoshcpyqjbcmpxrqq.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndleWZvc2hjcHlxamJjbXB4cnFxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEyODIzNDEsImV4cCI6MjEwNjg1ODM0MX0.0ur5-MQdbtbZdG9Q7CzHAhzMv5Z7unXGti3fuz6vk0U";
 
@@ -15,11 +14,13 @@ const SESSION_KEY = 'screenguard_session';
 const PASSWORD_HASH_KEY = 'screenguard_pass_hash';
 const SESSION_EXPIRY = 7 * 24 * 60 * 60 * 1000;
 
+// ============================================
 // INIT
+// ============================================
+
 document.addEventListener('DOMContentLoaded', () => {
     console.log('[Panel] Loading...');
 
-    // Supabase init
     try {
         supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         console.log('[Panel] Supabase connected');
@@ -29,26 +30,28 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    // Check session
     if (isLoggedIn()) {
         showDashboard();
     } else {
         showLogin();
     }
 
-    // Form
     document.getElementById('loginForm').addEventListener('submit', handleLogin);
     document.getElementById('logoutBtn').addEventListener('click', handleLogout);
     document.getElementById('refreshBtn').addEventListener('click', () => location.reload());
-    document.getElementById('refreshMediaBtn').addEventListener('click', loadMedia);
 
-    // Actions
+    const refreshMediaBtn = document.getElementById('refreshMediaBtn');
+    if (refreshMediaBtn) refreshMediaBtn.addEventListener('click', loadMedia);
+
     document.querySelectorAll('.action-btn[data-cmd]').forEach(btn => {
         btn.addEventListener('click', () => sendCommand(btn, btn.dataset.cmd));
     });
 });
 
+// ============================================
 // AUTH
+// ============================================
+
 async function handleLogin(e) {
     e.preventDefault();
 
@@ -104,7 +107,7 @@ function isLoggedIn() {
         if (!s) return false;
         if (Date.now() > s.expiry) { localStorage.removeItem(SESSION_KEY); return false; }
         return true;
-    } catch { return false; }
+    } catch (e) { return false; }
 }
 
 function saveSession() {
@@ -117,7 +120,10 @@ async function sha256(text) {
     return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+// ============================================
 // SCREENS
+// ============================================
+
 function showLogin() {
     document.getElementById('loginScreen').classList.remove('hidden');
     document.getElementById('dashboard').classList.add('hidden');
@@ -130,7 +136,10 @@ function showDashboard() {
     loadDevices();
 }
 
+// ============================================
 // DEVICES
+// ============================================
+
 async function loadDevices() {
     const list = document.getElementById('devicesList');
     list.innerHTML = '<div class="loading">Loading devices…</div>';
@@ -204,7 +213,10 @@ function selectDevice(key, devices) {
     loadMedia();
 }
 
+// ============================================
 // COMMANDS
+// ============================================
+
 async function sendCommand(btn, cmd) {
     if (!currentDeviceKey) {
         toast('Pehle device select karo', 'error');
@@ -238,7 +250,10 @@ function sendCustom(type) {
     sendCommand(null, `${type}:${d}`);
 }
 
+// ============================================
 // MEDIA
+// ============================================
+
 async function loadMedia() {
     const list = document.getElementById('mediaList');
     if (!currentDeviceKey) return;
@@ -290,10 +305,35 @@ async function loadMedia() {
     }
 }
 
+// ============================================
 // HELPERS
+// ============================================
+
 function timeAgo(ts) {
     if (!ts) return '—';
     const diff = Date.now() - new Date(ts).getTime();
+    if (diff < 60000) return 'Just now';
+    if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
+    if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
+    return Math.floor(diff / 86400000) + 'd ago';
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;',
+        '"': '&quot;', "'": '&#39;'
+    }[c]));
+}
+
+function toast(msg, type = 'info') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = 'toast ' + type;
+    el.classList.remove('hidden');
+    clearTimeout(window._toastTimer);
+    window._toastTimer = setTimeout(() => el.classList.add('hidden'), 2500);
+            }ate(ts).getTime();
     if (diff < 60000) return 'Just now';
     if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
     if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
