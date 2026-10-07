@@ -8,11 +8,11 @@
 </head>
 <body>
 
-<!-- DASHBOARD — Direct open -->
+<!-- DASHBOARD — Direct open, no login -->
 <div id="dashboard" class="screen">
 
     <!-- ⭐ DIAGNOSTIC BANNER -->
-    <div id="debugInfo" style="background:#EF4444;color:#FFF;padding:10px;font-size:12px;font-weight:bold;text-align:center;">
+    <div id="debugInfo" style="background:#F59E0B;color:#FFF;padding:10px;font-size:12px;font-weight:bold;text-align:center;">
         JS Check: Loading...
     </div>
 
@@ -81,28 +81,8 @@
 
 <div id="toast" class="toast hidden"></div>
 
-<!-- Step 1: Supabase SDK -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-<!-- Step 2: Diagnostic check -->
-<script>
-    (function() {
-        var el = document.getElementById('debugInfo');
-        var sdk = typeof window.supabase;
-        var msg = 'JS OK | Supabase: ' + sdk;
-        el.textContent = msg;
-        if (sdk !== 'object') {
-            el.style.background = '#EF4444';
-            el.textContent = '❌ Supabase SDK load nahi hua (CDN block)';
-        } else {
-            el.style.background = '#10B981';
-            el.textContent = '✓ Supabase SDK loaded';
-        }
-    })();
-</script>
-
-<!-- Step 3: App logic -->
-<script src="app.js?v=3"></script>
+<!-- ⭐ App Logic (direct fetch, no SDK needed) -->
+<script src="app.js?v=5"></script>
 
 </body>
 </html>
