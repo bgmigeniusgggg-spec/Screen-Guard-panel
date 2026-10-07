@@ -5,26 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ScreenGuard Panel</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
 </head>
 <body>
 
-<!-- LOGIN SCREEN -->
-<div id="loginScreen" class="screen">
-    <div class="login-box">
-        <div class="login-logo">🛡️</div>
-        <h1>ScreenGuard</h1>
-        <p class="subtitle">Sign in to continue</p>
-        <form id="loginForm">
-            <input type="password" id="passwordInput" placeholder="Enter password" required>
-            <button type="submit" id="loginBtn">Sign In</button>
-        </form>
-        <p id="loginError" class="error"></p>
-    </div>
-</div>
+<!-- DASHBOARD — Direct open -->
+<div id="dashboard" class="screen">
 
-<!-- DASHBOARD -->
-<div id="dashboard" class="screen hidden">
+    <!-- ⭐ DIAGNOSTIC BANNER -->
+    <div id="debugInfo" style="background:#EF4444;color:#FFF;padding:10px;font-size:12px;font-weight:bold;text-align:center;">
+        JS Check: Loading...
+    </div>
+
     <header class="app-header">
         <div class="header-left">
             <span class="logo">🛡️</span>
@@ -90,8 +81,28 @@
 
 <div id="toast" class="toast hidden"></div>
 
+<!-- Step 1: Supabase SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js"></script>
+
+<!-- Step 2: Diagnostic check -->
+<script>
+    (function() {
+        var el = document.getElementById('debugInfo');
+        var sdk = typeof window.supabase;
+        var msg = 'JS OK | Supabase: ' + sdk;
+        el.textContent = msg;
+        if (sdk !== 'object') {
+            el.style.background = '#EF4444';
+            el.textContent = '❌ Supabase SDK load nahi hua (CDN block)';
+        } else {
+            el.style.background = '#10B981';
+            el.textContent = '✓ Supabase SDK loaded';
+        }
+    })();
+</script>
+
+<!-- Step 3: App logic -->
+<script src="app.js?v=3"></script>
 
 </body>
 </html>
